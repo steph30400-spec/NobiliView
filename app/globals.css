@@ -1,0 +1,48 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;780;900&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --nobili-dark: #050A10;
+  --nobili-card: #0A1220;
+  --nobili-border: rgba(255,255,255,0.08);
+  --nobili-gold: #D4A84E;
+  --nobili-teal: #7AE6D0;
+  --nobili-blue: #8CAEFF;
+  --nobili-muted: #8898A8;
+  --nobili-text: #E8EFF8;
+}
+
+* { box-sizing: border-box; }
+
+body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background: var(--nobili-dark);
+  color: var(--nobili-text);
+  -webkit-font-smoothing: antialiased;
+}
+
+@layer utilities {
+  .text-gradient-gold {
+    background: linear-gradient(135deg, #D4A84E, #8CAEFF, #7AE6D0);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .border-nobili {
+    border: 1px solid var(--nobili-border);
+  }
+
+  .glow-gold {
+    box-shadow: 0 0 40px rgba(212, 168, 78, 0.15), 0 0 80px rgba(212, 168, 78, 0.05);
+  }
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar { width: 6px; }
+::-webkit-scrollbar-track { background: var(--nobili-dark); }
+::-webkit-scrollbar-thumb { background: #2A3A50; border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: #3A4A60; }
