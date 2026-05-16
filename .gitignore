@@ -42,3 +42,4 @@ next-env.d.ts
 OpenClaw-bot-review
 OpenClaw-bot-review
 agents
+.env.local

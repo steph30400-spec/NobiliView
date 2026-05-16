@@ -1,45 +1,61 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+import { createClient } from '@supabase/supabase-js'
 
-export function middleware(req: NextRequest) {
-  const res = NextResponse.next()
+const publicPaths = ['/', '/login', '/signup', '/reset-password', '/pricing', '/api/health']
 
-  // Security headers
-  const headers = {
-    'X-Content-Type-Options': 'nosniff',
-    'X-Frame-Options': 'DENY',
-    'X-XSS-Protection': '1; mode=block',
-    'Referrer-Policy': 'strict-origin-when-cross-origin',
-    'Permissions-Policy': 'camera=(), microphone=(), geolocation=()',
+export async function middleware(req: NextRequest) {
+  const { pathname } = req.nextUrl
+
+  // Allow public paths
+  if (publicPaths.some(p => pathname.startsWith(p))) {
+    return NextResponse.next()
   }
 
-  for (const [key, value] of Object.entries(headers)) {
-    res.headers.set(key, value)
+  // Allow static files and Next.js internals
+  if (
+    pathname.startsWith('/_next') ||
+    pathname.startsWith('/favicon') ||
+    pathname.includes('.')
+  ) {
+    return NextResponse.next()
   }
 
-  // CORS — only allow our own origin in production
-  const origin = req.headers.get('origin')
-  if (origin && process.env.NODE_ENV === 'production') {
-    // En prod, restreindre à notre domaine
-    const allowedOrigins = [
-      'https://nobiliview.com',
-      'https://www.nobiliview.com',
-      // ajouter d'autres domaines si besoin
-    ]
-    if (allowedOrigins.includes(origin)) {
-      res.headers.set('Access-Control-Allow-Origin', origin)
-      res.headers.set('Access-Control-Allow-Methods', 'GET, POST, PATCH, DELETE, OPTIONS')
-      res.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization')
-      res.headers.set('Access-Control-Allow-Credentials', 'true')
+  // Check auth token from cookie
+  const token = req.cookies.get('sb-access-token')?.value
+
+  if (!token) {
+    const loginUrl = new URL('/login', req.url)
+    loginUrl.searchParams.set('redirect', pathname)
+    return NextResponse.redirect(loginUrl)
+  }
+
+  // Verify token with Supabase
+  try {
+    const supabase = createClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+    )
+    const { data: { user }, error } = await supabase.auth.getUser(token)
+
+    if (error || !user) {
+      const res = NextResponse.redirect(new URL('/login', req.url))
+      res.cookies.delete('sb-access-token')
+      return res
     }
-  }
 
-  return res
+    // Add user to headers for server components
+    const requestHeaders = new Headers(req.headers)
+    requestHeaders.set('x-user-id', user.id)
+
+    return NextResponse.next({ request: { headers: requestHeaders } })
+  } catch {
+    return NextResponse.redirect(new URL('/login', req.url))
+  }
 }
 
 export const config = {
   matcher: [
-    // Apply to all routes except static files and api/health
-    '/((?!_next/static|_next/image|favicon.ico|api/health).*)',
+    '/((?!_next/static|_next/image|favicon.ico|api/health|.*\\..*).*)',
   ],
 }

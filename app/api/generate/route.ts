@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSupabase, WORLDLABS_API_KEY, WORLDLABS_API_URL } from '@/lib/server-only'
+import { getServerSupabase, getWorldLabsConfig } from '@/lib/server-only'
 
 // Rate limiting simple par IP — en prod, utiliser Upstash Redis
 const ipRequests = new Map<string, { count: number; resetAt: number }>()
@@ -113,15 +113,17 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const wlRes = await fetch(`${WORLDLABS_API_URL}/worlds:generate`, {
+    const { apiKey } = getWorldLabsConfig()
+
+    const wlRes = await fetch(`${getWorldLabsConfig().apiUrl}/worlds:generate`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${WORLDLABS_API_KEY}`,
+        'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
         model: 'marble-1.1',
-        inputs: photos.map(url => ({ type: 'image', url })),
+        inputs: photos.map((url: string) => ({ type: 'image', url })),
         callback_url: callback_url ?? null,
       }),
     })
