@@ -74,7 +74,7 @@ export default function PricingPage() {
               Tarifs simples et transparents
             </h1>
             <p className="text-white/45 text-xl max-w-2xl mx-auto">
-              Pas d'abonnement lock-in. Vous achetez des crédits selon vos besoins.
+              Pas d&apos;abonnement lock-in. Vous achetez des crédits selon vos besoins.
             </p>
           </div>
           <div className="grid md:grid-cols-3 gap-6">

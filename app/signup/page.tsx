@@ -2,11 +2,9 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { useRouter } from 'next/navigation'
 import { supabase } from '@/lib/supabase-client'
 
 export default function SignupPage() {
-  const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [fullName, setFullName] = useState('')
@@ -114,7 +112,7 @@ export default function SignupPage() {
             </div>
 
             <div>
-              <label className="block text-white/60 text-sm mb-2">Nom de l'agence <span className="text-white/25">(optionnel)</span></label>
+              <label className="block text-white/60 text-sm mb-2">Nom de l&apos;agence <span className="text-white/25">(optionnel)</span></label>
               <input
                 type="text"
                 value={company}

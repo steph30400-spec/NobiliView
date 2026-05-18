@@ -38,7 +38,7 @@ export default class ErrorBoundary extends Component<Props, State> {
             </div>
             <h2 className="text-white font-bold text-xl mb-3">Une erreur est survenue</h2>
             <p className="text-white/45 text-sm mb-6">
-              Quelque chose s'est mal passé. Rafraîchissez la page ou contactez le support.
+              Quelque chose s&apos;est mal passé. Rafraîchissez la page ou contactez le support.
             </p>
             <button
               onClick={() => this.setState({ hasError: false })}

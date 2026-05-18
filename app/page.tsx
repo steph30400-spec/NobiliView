@@ -1,4 +1,5 @@
 import Navbar from '@/components/Navbar'
+import ContactForm from '@/components/ContactForm'
 import Link from 'next/link'
 
 export default function Home() {
@@ -140,12 +141,7 @@ export default function Home() {
           <h2>Envoyez un bien, recevez une visite 3D.</h2>
           <p>Prototype : le formulaire peut envoyer vers email, Telegram ou n8n. Pas besoin de base de données pour tester le marché.</p>
         </div>
-        <form onSubmit={(e) => { e.preventDefault(); alert('Prototype : branchement n8n/email à ajouter.') }}>
-          <input placeholder="Nom de l'agence" />
-          <input placeholder="Email" type="email" />
-          <input placeholder="Lien photos/vidéo du bien" />
-          <button className="btn primary" type="submit">Demander une démo</button>
-        </form>
+        <ContactForm />
       </section>
 
       {/* Footer */}
