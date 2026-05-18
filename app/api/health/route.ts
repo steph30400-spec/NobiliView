@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
+import { query } from '@/lib/db'
 
 export async function GET() {
   const results = {
@@ -8,21 +8,16 @@ export async function GET() {
     services: {} as Record<string, { ok: boolean; latency_ms?: number; error?: string }>,
   }
 
-  // Check Supabase
+  // Check PostgreSQL
   const t0 = Date.now()
   try {
-    const supabase = createClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-    )
-    const { error } = await supabase.from('users').select('count', { count: 'exact', head: true })
-    results.services.supabase = {
-      ok: !error,
+    await query('select 1')
+    results.services.postgres = {
+      ok: true,
       latency_ms: Date.now() - t0,
-      ...(error && { error: error.message }),
     }
   } catch (e) {
-    results.services.supabase = { ok: false, error: (e as Error).message }
+    results.services.postgres = { ok: false, error: (e as Error).message }
   }
 
   // Check World Labs API (simple connectivity check)
@@ -31,15 +26,16 @@ export async function GET() {
     const res = await fetch('https://api.worldlabs.ai/marble/v1/models', {
       method: 'GET',
       headers: {
-        'Authorization': `Bearer ${process.env.WORLDLABS_API_KEY}`,
+        'WLT-Api-Key': process.env.WORLDLABS_API_KEY ?? '',
         'Content-Type': 'application/json',
       },
       signal: AbortSignal.timeout(5000),
     })
+    const authAccepted = res.status !== 401 && res.status !== 403
     results.services.worldlabs = {
-      ok: res.ok,
+      ok: res.ok || authAccepted,
       latency_ms: Date.now() - t1,
-      ...(res.ok ? {} : { error: `HTTP ${res.status}` }),
+      ...(res.ok || authAccepted ? {} : { error: `HTTP ${res.status}` }),
     }
   } catch (e) {
     results.services.worldlabs = { ok: false, error: (e as Error).message }

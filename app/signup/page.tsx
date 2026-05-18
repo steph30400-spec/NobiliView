@@ -2,7 +2,6 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { supabase } from '@/lib/supabase-client'
 
 export default function SignupPage() {
   const [email, setEmail] = useState('')
@@ -18,42 +17,17 @@ export default function SignupPage() {
     setLoading(true)
     setError('')
 
-    // 1. Create auth user
-    const { data: authData, error: signUpError } = await supabase.auth.signUp({
-      email,
-      password,
-      options: {
-        data: { full_name: fullName, company },
-      },
+    const res = await fetch('/api/auth/signup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password, fullName, company }),
     })
+    const data = await res.json().catch(() => ({}))
 
-    if (signUpError) {
-      setError(signUpError.message)
+    if (!res.ok) {
+      setError(data.error ?? 'Erreur lors de la creation du compte.')
       setLoading(false)
       return
-    }
-
-    if (!authData.user) {
-      setError('Erreur lors de la création du compte.')
-      setLoading(false)
-      return
-    }
-
-    // 2. Create user profile in public.users table
-    const { error: profileError } = await supabase
-      .from('users')
-      .insert({
-        id: authData.user.id,
-        email,
-        full_name: fullName || null,
-        company: company || null,
-        plan: 'demo',
-        credits: 0,
-      })
-
-    if (profileError) {
-      console.error('[Signup] Profile creation error:', profileError)
-      // Don't block — auth user is created, profile can be fixed manually
     }
 
     setSuccess(true)
@@ -71,7 +45,7 @@ export default function SignupPage() {
           </div>
           <h1 className="text-white font-bold text-2xl mb-3">Compte créé !</h1>
           <p className="text-white/45 text-sm mb-8">
-            Un email de confirmation a été envoyé à <span className="text-white font-medium">{email}</span>. Cliquez sur le lien pour activer votre compte.
+            Votre compte PostgreSQL a ete cree pour <span className="text-white font-medium">{email}</span>.
           </p>
           <Link href="/login" className="text-[#D4A84E] hover:text-[#D4A84E]/80 font-medium text-sm transition-colors">
             Se connecter

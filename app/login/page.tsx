@@ -3,7 +3,6 @@
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { supabase } from '@/lib/supabase-client'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -17,13 +16,18 @@ export default function LoginPage() {
     setLoading(true)
     setError('')
 
-    const { error } = await supabase.auth.signInWithPassword({ email, password })
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    })
+    const data = await res.json().catch(() => ({}))
 
-    if (error) {
-      setError(error.message)
+    if (!res.ok) {
+      setError(data.error ?? 'Connexion impossible.')
       setLoading(false)
     } else {
-      router.push('/dashboard')
+      router.push('/upload')
     }
   }
 
@@ -88,9 +92,7 @@ export default function LoginPage() {
           </form>
 
           <div className="mt-6 text-center">
-            <Link href="/reset-password" className="text-white/35 text-sm hover:text-white/60 transition-colors">
-              Mot de passe oublié ?
-            </Link>
+            <span className="text-white/35 text-sm">Mot de passe oublié ? Contactez le support.</span>
           </div>
         </div>
 

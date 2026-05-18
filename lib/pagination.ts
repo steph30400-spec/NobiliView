@@ -1,6 +1,6 @@
 /**
- * Pagination utility — cursor-based pour Supabase
- * À utiliser sur toutes les requêtes de liste pour éviter de charger toute la DB
+ * Pagination utility for SQL-backed list endpoints.
+ * Use it to avoid loading entire tables in API responses.
  */
 
 export interface PaginatedResult<T> {
@@ -32,8 +32,7 @@ export function parsePagination(searchParams: URLSearchParams): { offset: number
 }
 
 /**
- * Helper pour construire une réponse paginée à partir d'une query Supabase
- * Utilise range (offset, offset + limit - 1)
+ * Helper pour construire une réponse paginée à partir d'une requête SQL.
  */
 export function buildPaginatedResponse<T>(
   data: T[],

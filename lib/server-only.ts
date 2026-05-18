@@ -1,10 +1,7 @@
 /**
- * NobiliView — Server-side only utilities
- * Ces fonctions NE doivent JAMAIS être importées depuis un composant client (.client.tsx)
- * Elles sont reservées aux Server Components et API Routes.
+ * NobiliView - Server-side only utilities.
+ * Never import this file from client components.
  */
-
-import { createClient } from '@supabase/supabase-js'
 
 // Lazy validation — only check when actually used, not at module load
 function getEnv(key: string): string {
@@ -16,19 +13,6 @@ function getEnv(key: string): string {
     )
   }
   return value
-}
-
-// Client Supabase server-side (avec clé service role — jamais exposé au client)
-export function getServerSupabase() {
-  const url = getEnv('NEXT_PUBLIC_SUPABASE_URL')
-  const key = getEnv('SUPABASE_SERVICE_ROLE_KEY')
-  
-  return createClient(url, key, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false,
-    },
-  })
 }
 
 // World Labs API — lazy, only resolved when called

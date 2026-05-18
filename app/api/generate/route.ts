@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSupabase, getWorldLabsConfig } from '@/lib/server-only'
+import { getSessionUser } from '@/lib/auth'
+import { query } from '@/lib/db'
+import { getWorldLabsConfig } from '@/lib/server-only'
 
 // Rate limiting simple par IP — en prod, utiliser Upstash Redis
 const ipRequests = new Map<string, { count: number; resetAt: number }>()
@@ -28,20 +30,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Trop de requêtes. Réessayez dans une minute.' }, { status: 429 })
   }
 
-  // Auth check
-  const authHeader = req.headers.get('authorization')
-  if (!authHeader?.startsWith('Bearer ')) {
+  const user = await getSessionUser()
+  if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  }
-
-  const supabase = getServerSupabase()
-
-  // Verify user from token
-  const token = authHeader.slice(7)
-  const { data: { user }, error: authError } = await supabase.auth.getUser(token)
-
-  if (authError || !user) {
-    return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
   }
 
   // Parse body
@@ -59,13 +50,17 @@ export async function POST(req: NextRequest) {
   }
 
   // Fetch property
-  const { data: property, error: propError } = await supabase
-    .from('properties')
-    .select('user_id, photos_urls, generation_status, credits')
-    .eq('id', property_id)
-    .single()
+  const { rows: properties } = await query<{
+    user_id: string
+    photos_urls: string[] | null
+    generation_status: string
+  }>(
+    'select user_id, photos_urls, generation_status from properties where id = $1 limit 1',
+    [property_id],
+  )
 
-  if (propError || !property) {
+  const property = properties[0]
+  if (!property) {
     return NextResponse.json({ error: 'Bien non trouvé' }, { status: 404 })
   }
 
@@ -75,13 +70,12 @@ export async function POST(req: NextRequest) {
   }
 
   // Check credits
-  const { data: userData } = await supabase
-    .from('users')
-    .select('credits')
-    .eq('id', user.id)
-    .single()
+  const { rows: users } = await query<{ credits: number }>(
+    'select credits from users where id = $1 limit 1',
+    [user.id],
+  )
 
-  const credits = userData?.credits ?? 0
+  const credits = users[0]?.credits ?? 0
   if (credits < 1) {
     return NextResponse.json({ error: 'Crédits insuffisants. Achetez des crédits pour générer un tour.' }, { status: 402 })
   }
@@ -92,23 +86,22 @@ export async function POST(req: NextRequest) {
   }
 
   // Pré-deduction du crédit (optimistic)
-  await supabase
-    .from('users')
-    .update({ credits: credits - 1 })
-    .eq('id', user.id)
+  await query('update users set credits = $1 where id = $2', [credits - 1, user.id])
 
   // Update property status
-  await supabase
-    .from('properties')
-    .update({ generation_status: 'running', status: 'processing' })
-    .eq('id', property_id)
+  await query(
+    `update properties
+     set generation_status = 'running', status = 'processing', updated_at = now()
+     where id = $1`,
+    [property_id],
+  )
 
   // Call World Labs API
   const photos = photos_urls ?? (property.photos_urls ?? [])
 
   if (photos.length === 0) {
     // Rollback credit
-    await supabase.from('users').update({ credits: credits }).eq('id', user.id)
+    await query('update users set credits = $1 where id = $2', [credits, user.id])
     return NextResponse.json({ error: 'Aucune photo disponible pour ce bien.' }, { status: 400 })
   }
 
@@ -118,7 +111,7 @@ export async function POST(req: NextRequest) {
     const wlRes = await fetch(`${getWorldLabsConfig().apiUrl}/worlds:generate`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${apiKey}`,
+        'WLT-Api-Key': apiKey,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -133,8 +126,13 @@ export async function POST(req: NextRequest) {
       console.error('[WorldLabs] Generation failed:', wlRes.status, err)
 
       // Rollback credit + status
-      await supabase.from('users').update({ credits: credits }).eq('id', user.id)
-      await supabase.from('properties').update({ generation_status: 'failed' }).eq('id', property_id)
+      await query('update users set credits = $1 where id = $2', [credits, user.id])
+      await query(
+        `update properties
+         set generation_status = 'failed', updated_at = now()
+         where id = $1`,
+        [property_id],
+      )
 
       return NextResponse.json({ error: 'Erreur World Labs. Réessayez.' }, { status: 502 })
     }
@@ -144,13 +142,12 @@ export async function POST(req: NextRequest) {
     // Store operation_id for polling
     const operationId = wlData?.name?.split('/').pop() ?? wlData?.operation?.name?.split('/').pop()
 
-    await supabase
-      .from('properties')
-      .update({
-        operation_id: operationId ?? null,
-        generation_status: 'running',
-      })
-      .eq('id', property_id)
+    await query(
+      `update properties
+       set operation_id = $1, generation_status = 'running', updated_at = now()
+       where id = $2`,
+      [operationId ?? null, property_id],
+    )
 
     return NextResponse.json({
       success: true,
@@ -162,8 +159,13 @@ export async function POST(req: NextRequest) {
     console.error('[Generate] Unexpected error:', e)
 
     // Rollback credit
-    await supabase.from('users').update({ credits: credits }).eq('id', user.id)
-    await supabase.from('properties').update({ generation_status: 'failed' }).eq('id', property_id)
+    await query('update users set credits = $1 where id = $2', [credits, user.id])
+    await query(
+      `update properties
+       set generation_status = 'failed', updated_at = now()
+       where id = $1`,
+      [property_id],
+    )
 
     return NextResponse.json({ error: 'Erreur interne. Réessayez.' }, { status: 500 })
   }
