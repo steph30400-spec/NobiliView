@@ -14,7 +14,7 @@ WORKDIR /worker
 
 COPY requirements.txt /worker/requirements.txt
 RUN python3 -m pip install --upgrade pip \
-  && python3 -m pip install --no-cache-dir -r /worker/requirements.txt
+  && python3 -m pip install --no-cache-dir --ignore-installed blinker -r /worker/requirements.txt
 
 ENV QT_QPA_PLATFORM=offscreen \
     RUNPOD_FRAME_TARGET=250 \
